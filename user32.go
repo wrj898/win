@@ -1521,6 +1521,7 @@ var (
 	endDeferWindowPos          uintptr
 	endDialog                  uintptr
 	endPaint                   uintptr
+	enumWindows		   uintptr
 	enumChildWindows           uintptr
 	findWindow                 uintptr
 	getActiveWindow            uintptr
@@ -1547,6 +1548,7 @@ var (
 	getWindowLongPtr           uintptr
 	getWindowPlacement         uintptr
 	getWindowRect              uintptr
+	getWindowTextW		   uintptr
 	insertMenuItem             uintptr
 	invalidateRect             uintptr
 	isChild                    uintptr
@@ -1641,6 +1643,7 @@ func init() {
 	endDialog = MustGetProcAddress(libuser32, "EndDialog")
 	endPaint = MustGetProcAddress(libuser32, "EndPaint")
 	enumChildWindows = MustGetProcAddress(libuser32, "EnumChildWindows")
+	enumWindows = MustGetProcAddress(libuser32,"EnumWindows")
 	findWindow = MustGetProcAddress(libuser32, "FindWindowW")
 	getActiveWindow = MustGetProcAddress(libuser32, "GetActiveWindow")
 	getAncestor = MustGetProcAddress(libuser32, "GetAncestor")
@@ -1671,6 +1674,7 @@ func init() {
 	}
 	getWindowPlacement = MustGetProcAddress(libuser32, "GetWindowPlacement")
 	getWindowRect = MustGetProcAddress(libuser32, "GetWindowRect")
+	getWindowTextW = MustGetProcAddress(libuser32,"GetWindowTextW")
 	insertMenuItem = MustGetProcAddress(libuser32, "InsertMenuItemW")
 	invalidateRect = MustGetProcAddress(libuser32, "InvalidateRect")
 	isChild = MustGetProcAddress(libuser32, "IsChild")
@@ -2036,6 +2040,18 @@ func EnumChildWindows(hWndParent HWND, lpEnumFunc, lParam uintptr) bool {
 	return ret != 0
 }
 
+func EnumWindows(enumFunc uintptr, lparam uintptr) (err error) {
+	r1, _, e1 := syscall.Syscall(enumWindows, 2, uintptr(enumFunc), uintptr(lparam), 0)
+	if r1 == 0 {
+		if e1 != 0 {
+			err = error(e1)
+		} else {
+			err = syscall.EINVAL
+		}
+	}
+	return
+}
+
 func FindWindow(lpClassName, lpWindowName *uint16) HWND {
 	ret, _, _ := syscall.Syscall(findWindow, 2,
 		uintptr(unsafe.Pointer(lpClassName)),
@@ -2265,6 +2281,20 @@ func GetWindowRect(hWnd HWND, rect *RECT) bool {
 		0)
 
 	return ret != 0
+}
+
+
+func GetWindowText(hWnd HWND, str *uint16, maxCount int32) (len int32, err error) {
+	r0, _, e1 := syscall.Syscall(getWindowTextW, 3, uintptr(hWnd), uintptr(unsafe.Pointer(str)), uintptr(maxCount))
+	len = int32(r0)
+	if len == 0 {
+		if e1 != 0 {
+			err = error(e1)
+		} else {
+			err = syscall.EINVAL
+		}
+	}
+	return
 }
 
 func InsertMenuItem(hMenu HMENU, uItem uint32, fByPosition bool, lpmii *MENUITEMINFO) bool {
